@@ -2,8 +2,9 @@ package mpawsce
 
 import (
 	"flag"
-	"fmt"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,6 +16,7 @@ import (
 const (
 	namespace = "AWS/CE"
 	region    = "us-east-1"
+	metrics   = "UnblendedCost"
 )
 
 var graphdef = map[string]mp.Graphs{
@@ -22,7 +24,7 @@ var graphdef = map[string]mp.Graphs{
 		Label: "billing",
 		Unit:  "integer",
 		Metrics: []mp.Metrics{
-			{Name: "total", Label: "Pending", Diff: false, Stacked: true},
+			{Name: metrics, Label: metrics, Diff: false, Stacked: true},
 		},
 	},
 }
@@ -46,14 +48,40 @@ func (c CEPlugin) createConnection() (*costexplorer.CostExplorer, error) {
 func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 	ret := make(map[string]float64)
 
-	fmt.Println(c.CostExplorer.GetCostAndUsage(&costexplorer.GetCostAndUsageInput{
+	start := "2017-11-01"
+	end := "2017-12-01"
+
+	dimentionValues, err := c.CostExplorer.GetDimensionValues(&costexplorer.GetDimensionValuesInput{
+		Dimension: aws.String("LINKED_ACCOUNT"),
+		TimePeriod: &costexplorer.DateInterval{
+			Start: aws.String(start),
+			End:   aws.String(end),
+		},
+	})
+
+	if err != nil {
+		return ret, err
+	}
+
+	accounts := make(map[string]string)
+	for _, v := range dimentionValues.DimensionValues {
+		name := *v.Attributes["description"]
+		// Mackerel allows /[-a-zA-Z0-9_]/ for name
+		name = strings.Replace(name, ".", "", -1)
+		name = strings.Replace(name, ",", "", -1)
+		name = strings.Replace(name, " ", "-", -1)
+
+		accounts[*v.Value] = name
+	}
+
+	costAndUsage, err := c.CostExplorer.GetCostAndUsage(&costexplorer.GetCostAndUsageInput{
 		Granularity: aws.String("MONTHLY"),
 		TimePeriod: &costexplorer.DateInterval{
-			Start: aws.String("2017-11-01"),
-			End:   aws.String("2017-12-01"),
+			Start: aws.String(start),
+			End:   aws.String(end),
 		},
 		Metrics: []*string{
-			aws.String("UnblendedCost"),
+			aws.String(metrics),
 		},
 		GroupBy: []*costexplorer.GroupDefinition{
 			&costexplorer.GroupDefinition{
@@ -61,29 +89,20 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 				Key:  aws.String("LINKED_ACCOUNT"),
 			},
 		},
-	}))
+	})
 
-	// gd1 := costexplorer.GroupDefinition{
-	// 	Type: aws.String("DIMENSION"),
-	// 	Key:  aws.String("LINKED_ACCOUNT"),
-	// }
+	if err != nil {
+		return ret, err
+	}
 
-	// gb := []*costexplorer.GroupDefinition{}
-	// gb = append(gb, &gd1)
+	for _, g := range costAndUsage.ResultsByTime[0].Groups {
+		ret["billing."+accounts[*g.Keys[0]]+"."+metrics], err = strconv.ParseFloat(*g.Metrics[metrics].Amount, 64)
+		if err != nil {
+			return ret, err
+		}
 
-	// input := costexplorer.GetCostAndUsageInput{
-	// 	GroupBy: gb,
-	// }
-	// fmt.Println(c.CostExplorer)
-	// input := costexplorer.GetCostAndUsageInput{}
+	}
 
-	// result, err := c.CostExplorer.GetCostAndUsage(&input)
-	// if err != nil {
-	// 	return ret, err
-	// }
-
-	// fmt.Println(result)
-	ret["billing.hogehoge.total"] = 1.0
 	return ret, nil
 
 }
