@@ -38,10 +38,10 @@ type CEPlugin struct {
 	CostExplorer    *costexplorer.CostExplorer
 }
 
-func (c CEPlugin) createConnection() (*costexplorer.CostExplorer, error) {
+func (c CEPlugin) createConnection() (CEPlugin, error) {
 	var creds = credentials.NewSharedCredentials("", "default")
-	conn := costexplorer.New(session.New(&aws.Config{Credentials: creds, Region: &c.Region}))
-	return conn, nil
+	c.CostExplorer = costexplorer.New(session.New(&aws.Config{Credentials: creds, Region: &c.Region}))
+	return c, nil
 }
 
 // FetchMetrics interface for mackerelplugin
@@ -139,7 +139,7 @@ func Do() {
 	ce.Region = region
 
 	var err error
-	ce.CostExplorer, err = ce.createConnection()
+	ce, err = ce.createConnection()
 	if err != nil {
 		log.Fatalln(err)
 	}
