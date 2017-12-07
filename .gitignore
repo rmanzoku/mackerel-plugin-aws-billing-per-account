@@ -13,5 +13,6 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-mackerel-plugin-aws-ce
+
+mackerel-plugin-aws-billing-per-account
 /dist/

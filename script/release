@@ -7,4 +7,4 @@
 set -e
 latest_tag=$(git describe --abbrev=0 --tags)
 goxc
-ghr -u rmanzoku -r mackerel-plugin-aws-ce $latest_tag dist/snapshot/
+ghr -u rmanzoku -r mackerel-plugin-aws-billing-per-account $latest_tag dist/snapshot/
