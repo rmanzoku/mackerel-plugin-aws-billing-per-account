@@ -16,7 +16,6 @@ import (
 const (
 	namespace = "AWS/CE"
 	region    = "us-east-1"
-	metrics   = "UnblendedCost"
 )
 
 var graphdef = map[string]mp.Graphs{
@@ -24,7 +23,9 @@ var graphdef = map[string]mp.Graphs{
 		Label: "billing",
 		Unit:  "integer",
 		Metrics: []mp.Metrics{
-			{Name: metrics, Label: metrics, Diff: false, Stacked: true},
+			{Name: "BlendedCost", Label: "BlendedCost", Diff: false, Stacked: true},
+			{Name: "UnblendedCost", Label: "UnblendedCost", Diff: false, Stacked: true},
+			{Name: "UsageQuantity", Label: "UsageQuantity", Diff: false, Stacked: true},
 		},
 	},
 }
@@ -32,6 +33,7 @@ var graphdef = map[string]mp.Graphs{
 // CEPlugin mackerel plugin for Cost Explorer
 type CEPlugin struct {
 	Prefix          string
+	Metrics         string
 	AccessKeyID     string
 	SecretAccessKey string
 	Region          string
@@ -81,7 +83,7 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 			End:   aws.String(end),
 		},
 		Metrics: []*string{
-			aws.String(metrics),
+			aws.String(c.Metrics),
 		},
 		GroupBy: []*costexplorer.GroupDefinition{
 			&costexplorer.GroupDefinition{
@@ -96,7 +98,7 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 	}
 
 	for _, g := range costAndUsage.ResultsByTime[0].Groups {
-		ret["billing."+accounts[*g.Keys[0]]+"."+metrics], err = strconv.ParseFloat(*g.Metrics[metrics].Amount, 64)
+		ret["billing."+accounts[*g.Keys[0]]+"."+c.Metrics], err = strconv.ParseFloat(*g.Metrics[c.Metrics].Amount, 64)
 		if err != nil {
 			return ret, err
 		}
@@ -125,6 +127,7 @@ func (c CEPlugin) MetricKeyPrefix() string {
 func Do() {
 	var (
 		optPrefix          = flag.String("metric-key-prefix", "aws-ce", "Metric key prefix")
+		optMetrics         = flag.String("metrics", "UnblendedCost", "Choise from [BlendedCost, UnblendedCost, UsageQuantity]")
 		optAccessKeyID     = flag.String("access-key-id", "", "AWS Access Key ID")
 		optSecretAccessKey = flag.String("secret-access-key", "", "AWS Secret Access Key")
 		optTempfile        = flag.String("tempfile", "", "Temp file name")
@@ -134,6 +137,7 @@ func Do() {
 	var ce CEPlugin
 
 	ce.Prefix = *optPrefix
+	ce.Metrics = *optMetrics
 	ce.AccessKeyID = *optAccessKeyID
 	ce.SecretAccessKey = *optSecretAccessKey
 	ce.Region = region
