@@ -70,7 +70,6 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 
 	start := fmt.Sprintf("%d-%d-%02d", firstday.Year(), firstday.Month(), firstday.Day())
 	end := fmt.Sprintf("%d-%d-%02d", now.Year(), now.Month(), now.Day())
-	last := fmt.Sprintf("%d-%d-%02d", lastday.Year(), lastday.Month(), lastday.Day())
 
 	elasp := float64(now.Unix() - firstday.Unix())
 	period := float64(lastday.Unix() - firstday.Unix())
