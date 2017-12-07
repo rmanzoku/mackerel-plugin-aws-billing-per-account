@@ -2,9 +2,11 @@ package mpawsce
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -20,12 +22,12 @@ const (
 
 var graphdef = map[string]mp.Graphs{
 	"billing.#": {
-		Label: "billing",
+		Label: "AWS Monthly Billing",
 		Unit:  "integer",
 		Metrics: []mp.Metrics{
-			{Name: "BlendedCost", Label: "BlendedCost", Diff: false, Stacked: true},
-			{Name: "UnblendedCost", Label: "UnblendedCost", Diff: false, Stacked: true},
-			{Name: "UsageQuantity", Label: "UsageQuantity", Diff: false, Stacked: true},
+			{Name: "BlendedCost", Label: "Blended Cost", Diff: false, Stacked: true},
+			{Name: "UnblendedCost", Label: "Unblended Cost", Diff: false, Stacked: true},
+			{Name: "UsageQuantity", Label: "Usage Quantity", Diff: false, Stacked: true},
 		},
 	},
 }
@@ -48,10 +50,12 @@ func (c *CEPlugin) createConnection() error {
 
 // FetchMetrics interface for mackerelplugin
 func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
+
 	ret := make(map[string]float64)
 
-	start := "2017-11-01"
-	end := "2017-12-01"
+	now := time.Now().UTC()
+	start := fmt.Sprintf("%d-%d-01", now.Year(), now.Month())
+	end := fmt.Sprintf("%d-%d-%02d", now.Year(), now.Month(), now.Day())
 
 	dimentionValues, err := c.CostExplorer.GetDimensionValues(&costexplorer.GetDimensionValuesInput{
 		Dimension: aws.String("LINKED_ACCOUNT"),
