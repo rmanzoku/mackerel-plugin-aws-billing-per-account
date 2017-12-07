@@ -1,4 +1,4 @@
-# mackerel-plugin-resque
+# mackerel-plugin-aws-billing-per-account
 
 ## Usage
 
