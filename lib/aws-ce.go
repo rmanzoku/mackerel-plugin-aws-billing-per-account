@@ -36,6 +36,7 @@ var graphdef = map[string]mp.Graphs{
 type CEPlugin struct {
 	Prefix          string
 	Metrics         string
+	DisableName     bool
 	AccessKeyID     string
 	SecretAccessKey string
 	Region          string
@@ -70,14 +71,16 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 	}
 
 	accounts := make(map[string]string)
-	for _, v := range dimentionValues.DimensionValues {
-		name := *v.Attributes["description"]
-		// Mackerel allows /[-a-zA-Z0-9_]/ for name
-		name = strings.Replace(name, ".", "", -1)
-		name = strings.Replace(name, ",", "", -1)
-		name = strings.Replace(name, " ", "-", -1)
+	if !c.DisableName {
+		for _, v := range dimentionValues.DimensionValues {
+			name := *v.Attributes["description"]
+			// Mackerel allows /[-a-zA-Z0-9_]/ for name
+			name = strings.Replace(name, ".", "", -1)
+			name = strings.Replace(name, ",", "", -1)
+			name = strings.Replace(name, " ", "-", -1)
 
-		accounts[*v.Value] = name
+			accounts[*v.Value] = name
+		}
 	}
 
 	costAndUsage, err := c.CostExplorer.GetCostAndUsage(&costexplorer.GetCostAndUsageInput{
@@ -102,7 +105,12 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 	}
 
 	for _, g := range costAndUsage.ResultsByTime[0].Groups {
-		ret["billing."+accounts[*g.Keys[0]]+"."+c.Metrics], err = strconv.ParseFloat(*g.Metrics[c.Metrics].Amount, 64)
+		key := *g.Keys[0]
+		if !c.DisableName {
+			key = accounts[*g.Keys[0]]
+		}
+
+		ret["billing."+key+"."+c.Metrics], err = strconv.ParseFloat(*g.Metrics[c.Metrics].Amount, 64)
 		if err != nil {
 			return ret, err
 		}
@@ -130,8 +138,9 @@ func (c CEPlugin) MetricKeyPrefix() string {
 // Do the plugin
 func Do() {
 	var (
-		optPrefix          = flag.String("metric-key-prefix", "aws-ce", "Metric key prefix")
-		optMetrics         = flag.String("metrics", "UnblendedCost", "Choise from [BlendedCost, UnblendedCost, UsageQuantity]")
+		optPrefix          = flag.String("metric-key-prefix", "aws-ce", "Metric key prefix.")
+		optMetrics         = flag.String("metrics", "UnblendedCost", "Choise from [BlendedCost, UnblendedCost, UsageQuantity].")
+		optDisableName     = flag.Bool("disable-name", false, "Disable to get account name. Output account ID.")
 		optAccessKeyID     = flag.String("access-key-id", "", "AWS Access Key ID")
 		optSecretAccessKey = flag.String("secret-access-key", "", "AWS Secret Access Key")
 		optTempfile        = flag.String("tempfile", "", "Temp file name")
@@ -142,6 +151,7 @@ func Do() {
 
 	ce.Prefix = *optPrefix
 	ce.Metrics = *optMetrics
+	ce.DisableName = *optDisableName
 	ce.AccessKeyID = *optAccessKeyID
 	ce.SecretAccessKey = *optSecretAccessKey
 	ce.Region = region
