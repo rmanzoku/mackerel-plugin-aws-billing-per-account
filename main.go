@@ -1,6 +1,8 @@
 package main
 
-import "github.com/rmanzoku/mackerel-plugin-aws-ce/lib"
+import (
+	"github.com/rmanzoku/mackerel-plugin-aws-billing-per-account/lib"
+)
 
 func main() {
 	mpawsce.Do()
