@@ -53,9 +53,20 @@ type CEPlugin struct {
 	CostExplorer    *costexplorer.CostExplorer
 }
 
-func (c *CEPlugin) createConnection() error {
-	var creds = credentials.NewSharedCredentials("", "default")
-	c.CostExplorer = costexplorer.New(session.New(&aws.Config{Credentials: creds, Region: &c.Region}))
+func (c *CEPlugin) prepare() error {
+
+	sess, err := session.NewSession()
+	if err != nil {
+		return err
+	}
+
+	config := aws.NewConfig()
+	if c.AccessKeyID != "" && c.SecretAccessKey != "" {
+		config = config.WithCredentials(credentials.NewStaticCredentials(c.AccessKeyID, c.SecretAccessKey, ""))
+	}
+	config = config.WithRegion(c.Region)
+
+	c.CostExplorer = costexplorer.New(sess, config)
 	return nil
 }
 
@@ -181,7 +192,7 @@ func Do() {
 	ce.Region = region
 
 	var err error
-	err = ce.createConnection()
+	err = ce.prepare()
 	if err != nil {
 		log.Fatalln(err)
 	}
