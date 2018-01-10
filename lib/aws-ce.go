@@ -21,22 +21,46 @@ const (
 )
 
 var graphdef = map[string]mp.Graphs{
-	"usage.#": {
-		Label: "AWS Monthly Billing",
+	"usage.blended_cost": {
+		Label: "AWS Monthly Cost Blended",
 		Unit:  "integer",
 		Metrics: []mp.Metrics{
-			{Name: "BlendedCost", Label: "Blended Cost", Diff: false, Stacked: true},
-			{Name: "UnblendedCost", Label: "Unblended Cost", Diff: false, Stacked: true},
-			{Name: "UsageQuantity", Label: "Usage Quantity", Diff: false, Stacked: true},
+			{Name: "#", Diff: false, Stacked: true},
 		},
 	},
-	"forecast.#": {
-		Label: "AWS Monthly Billing Forecast",
+	"usage.unblended_cost": {
+		Label: "AWS Monthly Cost Unblended",
 		Unit:  "integer",
 		Metrics: []mp.Metrics{
-			{Name: "ForecastBlendedCost", Label: "Forecast Blended Cost", Diff: false, Stacked: true},
-			{Name: "ForecastUnblendedCost", Label: "Forecast Unblended Cost", Diff: false, Stacked: true},
-			{Name: "ForecastUsageQuantity", Label: "Forecast Usage Quantity", Diff: false, Stacked: true},
+			{Name: "#", Diff: false, Stacked: true},
+		},
+	},
+	"usage.usage_quantity": {
+		Label: "AWS Monthly Usage Quantity",
+		Unit:  "integer",
+		Metrics: []mp.Metrics{
+			{Name: "#", Diff: false, Stacked: true},
+		},
+	},
+	"forecast.blended_cost": {
+		Label: "Forecast AWS Monthly Cost Blended",
+		Unit:  "integer",
+		Metrics: []mp.Metrics{
+			{Name: "#", Diff: false, Stacked: true},
+		},
+	},
+	"forecast.unblended_cost": {
+		Label: "Forecast AWS Monthly Cost Unblended",
+		Unit:  "integer",
+		Metrics: []mp.Metrics{
+			{Name: "#", Diff: false, Stacked: true},
+		},
+	},
+	"forecast.usage_quantity": {
+		Label: "Forecast AWS Monthly Usage Quantity",
+		Unit:  "integer",
+		Metrics: []mp.Metrics{
+			{Name: "#", Diff: false, Stacked: true},
 		},
 	},
 }
@@ -51,6 +75,22 @@ type CEPlugin struct {
 	SecretAccessKey string
 	Region          string
 	CostExplorer    *costexplorer.CostExplorer
+}
+
+func convertMetricsName(in string) string {
+	if in == "BlendedCost" {
+		return "blended_cost"
+	}
+
+	if in == "UnblendedCost" {
+		return "unblended_cost"
+	}
+
+	if in == "UsageQuantity" {
+		return "usage_quantity"
+	}
+
+	return "unknown"
 }
 
 func (c *CEPlugin) prepare() error {
@@ -142,10 +182,10 @@ func (c CEPlugin) FetchMetrics() (map[string]float64, error) {
 			return ret, err
 		}
 
-		ret["usage."+key+"."+c.Metrics] = usage
+		ret["usage."+convertMetricsName(c.Metrics)+"."+key] = usage
 
 		if c.EnableForecast {
-			ret["forecast."+key+"."+"Forecast"+c.Metrics] = usage * period / elasp
+			ret["forecast."+convertMetricsName(c.Metrics)+"."+key] = usage * period / elasp
 		}
 
 	}
